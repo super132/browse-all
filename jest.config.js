@@ -10,7 +10,7 @@ module.exports = {
     '!src/**/*.test.ts',
     '!src/types.ts',
   ],
-  coverageThresholds: {
+  coverageThreshold: {
     global: {
       lines: 80,
       functions: 80,
@@ -23,11 +23,7 @@ module.exports = {
     '^.+\\.tsx?$': [
       'ts-jest',
       {
-        tsconfig: {
-          // Relax strict checks that are unnecessary in test files
-          noUnusedLocals: false,
-          noUnusedParameters: false,
-        },
+        tsconfig: './tsconfig.test.json',
       },
     ],
   },
