@@ -1,10 +1,9 @@
 import * as net from 'net';
 import * as path from 'path';
 import * as childProcess from 'child_process';
+import { SOCK_PATH } from '../constants';
 import { BrowserToolError } from '../errors';
 import type { CommandRequest, CommandResponse } from '../types';
-
-const SOCK_PATH = '/tmp/browser-tool/daemon.sock';
 const RESPONSE_TIMEOUT_MS = 10_000;
 // Delays between connection retries after spawning the daemon:
 // 100 ms, 200 ms, 400 ms, 800 ms, 1 600 ms

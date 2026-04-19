@@ -1,15 +1,13 @@
 import * as fs from 'fs';
 import * as net from 'net';
-import * as path from 'path';
 import { chromium } from 'playwright';
+import { BASE_DIR, SOCK_PATH, PID_PATH } from '../constants';
 import { BrowserToolError } from '../errors';
 import { SessionManager } from '../session/SessionManager';
 import type { CommandRequest, CommandResponse, ErrorResponse } from '../types';
 import { dispatch } from '../commands/index';
 
-const BASE_DIR = '/tmp/browser-tool';
-export const SOCK_PATH = path.join(BASE_DIR, 'daemon.sock');
-export const PID_PATH = path.join(BASE_DIR, 'daemon.pid');
+export { SOCK_PATH, PID_PATH };
 
 // ---------------------------------------------------------------------------
 // Structured stderr logger — stdout is reserved for CLI JSON output

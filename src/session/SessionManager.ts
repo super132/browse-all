@@ -2,10 +2,9 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { randomUUID } from 'crypto';
 import type { Browser } from 'playwright';
+import { BASE_DIR } from '../constants';
 import { BrowserToolError } from '../errors';
 import { BrowserSession } from './BrowserSession';
-
-const BASE_DIR = '/tmp/browser-tool';
 const IDLE_TIMEOUT_MS = 60 * 60 * 1_000; // 1 hour
 
 export class SessionManager {
