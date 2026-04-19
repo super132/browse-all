@@ -46,6 +46,50 @@ function resolveDownloadPath(dir: string, fileName: string): string {
   return target;
 }
 
+/**
+ * Maps a raw (untyped JSON) element from page.evaluate() into a typed
+ * InteractiveElement, validating all required fields for each variant.
+ * Returns null for elements that are missing required fields or have an
+ * unrecognised type — callers should filter nulls out.
+ */
+function toInteractiveElement(raw: unknown): InteractiveElement | null {
+  if (raw === null || typeof raw !== 'object') return null;
+
+  const el = raw as Record<string, unknown>;
+  const { type, selector } = el;
+
+  if (typeof selector !== 'string' || selector === '') return null;
+
+  switch (type) {
+    case 'link': {
+      if (typeof el.href !== 'string' || el.href === '') return null;
+      return {
+        type: 'link',
+        text: typeof el.text === 'string' ? el.text : '',
+        href: el.href,
+        selector,
+      };
+    }
+    case 'button': {
+      return {
+        type: 'button',
+        text: typeof el.text === 'string' ? el.text : '',
+        selector,
+      };
+    }
+    case 'input': {
+      return {
+        type: 'input',
+        name: typeof el.name === 'string' ? el.name : '',
+        inputType: typeof el.inputType === 'string' ? el.inputType : 'text',
+        selector,
+      };
+    }
+    default:
+      return null;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // BrowserSession
 // ---------------------------------------------------------------------------
@@ -119,7 +163,9 @@ export class BrowserSession {
 
     const markdown = turndown.turndown(bodyHtml);
     const rawElements = await this.extractInteractiveElements();
-    const interactiveElements = rawElements as InteractiveElement[];
+    const interactiveElements = rawElements
+      .map(toInteractiveElement)
+      .filter((el): el is InteractiveElement => el !== null);
 
     this.updateActivity();
     return {

@@ -153,6 +153,109 @@ describe('BrowserSession.read', () => {
     const savedPath = writeFileSpy.mock.calls[0][0] as string;
     expect(savedPath).toContain(path.join(TEMP_DIR, 'screenshots'));
   });
+
+  it('filters out link elements missing href', async () => {
+    const badLink = { type: 'link', text: 'No href', selector: 'a' }; // missing href
+    const session = makeSession(
+      {
+        evaluate: jest.fn()
+          .mockResolvedValueOnce('<p>test</p>')
+          .mockResolvedValueOnce([badLink]),
+      },
+      TEMP_DIR,
+    );
+    const result = await session.read();
+    expect(result.interactiveElements).toHaveLength(0);
+  });
+
+  it('filters out elements with missing or empty selector', async () => {
+    const noSelector = { type: 'button', text: 'Click', selector: '' };
+    const session = makeSession(
+      {
+        evaluate: jest.fn()
+          .mockResolvedValueOnce('<p>test</p>')
+          .mockResolvedValueOnce([noSelector]),
+      },
+      TEMP_DIR,
+    );
+    const result = await session.read();
+    expect(result.interactiveElements).toHaveLength(0);
+  });
+
+  it('filters out elements with unrecognised type', async () => {
+    const unknown = { type: 'select', text: 'Choose', selector: 'select' };
+    const session = makeSession(
+      {
+        evaluate: jest.fn()
+          .mockResolvedValueOnce('<p>test</p>')
+          .mockResolvedValueOnce([unknown]),
+      },
+      TEMP_DIR,
+    );
+    const result = await session.read();
+    expect(result.interactiveElements).toHaveLength(0);
+  });
+
+  it('filters out null/non-object entries from evaluate result', async () => {
+    const mixed = [
+      null,
+      42,
+      { type: 'button', text: 'OK', selector: '#ok' },
+    ];
+    const session = makeSession(
+      {
+        evaluate: jest.fn()
+          .mockResolvedValueOnce('<p>test</p>')
+          .mockResolvedValueOnce(mixed),
+      },
+      TEMP_DIR,
+    );
+    const result = await session.read();
+    expect(result.interactiveElements).toHaveLength(1);
+    expect(result.interactiveElements[0].type).toBe('button');
+  });
+
+  it('constructs typed InteractiveElement objects explicitly for each variant', async () => {
+    const rawElements = [
+      { type: 'link', text: 'Home', href: 'https://example.com', selector: 'a#home' },
+      { type: 'button', text: 'Submit', selector: '#submit' },
+      { type: 'input', name: 'email', inputType: 'email', selector: '#email' },
+    ];
+    const session = makeSession(
+      {
+        evaluate: jest.fn()
+          .mockResolvedValueOnce('<p>test</p>')
+          .mockResolvedValueOnce(rawElements),
+      },
+      TEMP_DIR,
+    );
+    const result = await session.read();
+    expect(result.interactiveElements).toHaveLength(3);
+
+    const [link, button, input] = result.interactiveElements;
+    expect(link).toEqual({ type: 'link', text: 'Home', href: 'https://example.com', selector: 'a#home' });
+    expect(button).toEqual({ type: 'button', text: 'Submit', selector: '#submit' });
+    expect(input).toEqual({ type: 'input', name: 'email', inputType: 'email', selector: '#email' });
+  });
+
+  it('defaults missing optional text/name/inputType fields rather than crashing', async () => {
+    const rawElements = [
+      { type: 'button', selector: '#btn' },                     // missing text
+      { type: 'input', selector: '#field' },                    // missing name and inputType
+    ];
+    const session = makeSession(
+      {
+        evaluate: jest.fn()
+          .mockResolvedValueOnce('<p>test</p>')
+          .mockResolvedValueOnce(rawElements),
+      },
+      TEMP_DIR,
+    );
+    const result = await session.read();
+    expect(result.interactiveElements).toHaveLength(2);
+    expect(result.interactiveElements[0]).toEqual({ type: 'button', text: '', selector: '#btn' });
+    expect(result.interactiveElements[1]).toEqual({ type: 'input', name: '', inputType: 'text', selector: '#field' });
+  });
 });
 
 // ---------------------------------------------------------------------------
