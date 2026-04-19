@@ -1,302 +1,304 @@
-# Browser Tool — Command Reference
+# Command Specifications
 
-All commands follow the pattern:
+## CLI Contract
+
 ```
-browser-tool <command> [options]
+browser-tool <command> [--session <sessionId>] [options]
 ```
 
-All output is JSON to stdout. On error, exit code is non-zero and output is:
-```json
-{ "error": "<message>", "code": "<ERROR_CODE>" }
+- All output is JSON to **stdout**
+- On success: exit code `0`, JSON success payload
+- On failure: non-zero exit code, JSON error payload (see [Error Format](#error-format))
+- The `--session` flag is required on all commands except `start`
+
+---
+
+## Error Format
+
+```typescript
+interface ErrorResponse {
+  error: string;     // Human-readable message
+  code: ErrorCode;   // Machine-readable code
+}
+
+type ErrorCode =
+  | "SESSION_NOT_FOUND"    // sessionId does not exist or has expired
+  | "NAVIGATION_FAILED"    // URL could not be loaded
+  | "ELEMENT_NOT_FOUND"    // CSS selector matched nothing
+  | "TIMEOUT"              // Action exceeded wait limit
+  | "DOWNLOAD_FAILED"      // Download did not complete
+  | "UPLOAD_FAILED"        // Upload failed (bad path or selector)
+  | "INVALID_ARGUMENTS";   // Missing or malformed flags
 ```
 
 ---
 
-## `start`
+## Commands
 
-Start a new browser session. Always call this first.
+### `start`
 
-```
-browser-tool start
-```
+Launches a new Playwright BrowserContext and Page. Returns a session ID.
+
+**Flags:** none
+
+**Implementation steps:**
+1. Generate UUID v4 as `sessionId`
+2. Launch Playwright Chromium in headless mode
+3. Create `BrowserContext` (isolated — no shared cookies/storage)
+4. Open a `Page` within the context
+5. Create temp dirs: `/tmp/browser-tool/<sessionId>/screenshots/` and `.../downloads/`
+6. Register session in daemon's session map
+7. Start 1-hour idle timer
 
 **Output:**
-```json
-{
-  "sessionId": "a1b2c3d4",
-  "message": "Session started"
+```typescript
+interface StartResponse {
+  sessionId: string;
+  message: "Session started";
 }
 ```
 
 ---
 
-## `navigate`
+### `navigate`
 
-Navigate to a URL. Waits for network idle before returning.
+Navigates the session's page to a URL. Waits for `networkidle` before returning.
 
-```
-browser-tool navigate --session <sessionId> --url <url>
-```
+**Flags:**
+- `--url <string>` (required) — full URL including scheme
 
-| Option | Required | Description |
-|--------|----------|-------------|
-| `--session` | Yes | Session ID from `start` |
-| `--url` | Yes | Full URL including scheme (https://) |
+**Implementation steps:**
+1. Call `page.goto(url, { waitUntil: "networkidle" })`
+2. Return page title and final URL (after any redirects)
 
 **Output:**
-```json
-{
-  "sessionId": "a1b2c3d4",
-  "url": "https://example.com",
-  "title": "Example Domain"
+```typescript
+interface NavigateResponse {
+  sessionId: string;
+  url: string;    // final URL after redirects
+  title: string;
 }
 ```
 
 ---
 
-## `read`
+### `read`
 
-Capture the current page state as markdown text and a screenshot.
+Captures the current page state: markdown content, interactive elements, and a screenshot.
 
-```
-browser-tool read --session <sessionId>
-```
+**Flags:** none beyond `--session`
 
-| Option | Required | Description |
-|--------|----------|-------------|
-| `--session` | Yes | Session ID |
-
-**Output:**
-```json
-{
-  "sessionId": "a1b2c3d4",
-  "url": "https://example.com",
-  "title": "Example Domain",
-  "markdown": "# Example Domain\n\nThis domain is for use in ...",
-  "screenshotPath": "/tmp/browser-tool/a1b2c3d4/screenshot-1713500000.png",
-  "interactiveElements": [
-    { "type": "link", "text": "More information", "href": "https://iana.org/domains/reserved", "selector": "a" },
-    { "type": "button", "text": "Submit", "selector": "#submit-btn" },
-    { "type": "input", "name": "email", "inputType": "email", "selector": "#email-input" }
-  ]
-}
-```
-
-> Use `screenshotPath` to view visual content (graphs, images, charts) that cannot be
-> represented in markdown.
-
----
-
-## `click`
-
-Click an element on the page.
-
-```
-browser-tool click --session <sessionId> --selector <css-selector>
-browser-tool click --session <sessionId> --coords <x>,<y>
-```
-
-| Option | Required | Description |
-|--------|----------|-------------|
-| `--session` | Yes | Session ID |
-| `--selector` | One of | CSS selector of the element to click |
-| `--coords` | One of | Page coordinates as `x,y` (useful for canvas/visual elements) |
+**Implementation steps:**
+1. Take a full-page screenshot → save to `/tmp/browser-tool/<sessionId>/screenshots/screenshot-<timestamp>.png`
+2. Extract page content:
+   - Convert visible DOM text to markdown (headings, paragraphs, lists, tables)
+   - Strip `<script>`, `<style>`, and hidden elements
+3. Extract interactive elements via DOM query:
+   - `<a>` → `{ type: "link", text, href, selector }`
+   - `<button>` → `{ type: "button", text, selector }`
+   - `<input>`, `<textarea>`, `<select>` → `{ type: "input", name, inputType, selector }`
+4. Return combined payload
 
 **Output:**
-```json
-{
-  "sessionId": "a1b2c3d4",
-  "action": "click",
-  "target": "#submit-btn"
+```typescript
+interface ReadResponse {
+  sessionId: string;
+  url: string;
+  title: string;
+  markdown: string;
+  screenshotPath: string;
+  interactiveElements: InteractiveElement[];
 }
+
+type InteractiveElement =
+  | { type: "link";   text: string; href: string;      selector: string }
+  | { type: "button"; text: string;                    selector: string }
+  | { type: "input";  name: string; inputType: string; selector: string };
 ```
 
 ---
 
-## `type`
+### `click`
 
-Type text into a focused input field. Use `click` to focus the field first.
+Clicks a DOM element or page coordinate. Waits for `networkidle` after click.
 
-```
-browser-tool type --session <sessionId> --selector <css-selector> --text <text>
-```
+**Flags (mutually exclusive):**
+- `--selector <string>` — CSS selector
+- `--coords <x>,<y>` — page coordinates (integers)
 
-| Option | Required | Description |
-|--------|----------|-------------|
-| `--session` | Yes | Session ID |
-| `--selector` | Yes | CSS selector of the input field |
-| `--text` | Yes | Text to type |
+**Implementation steps:**
+1. If `--selector`: call `page.click(selector)`
+2. If `--coords`: call `page.mouse.click(x, y)`
+3. Wait for `networkidle`
 
 **Output:**
-```json
-{
-  "sessionId": "a1b2c3d4",
-  "action": "type",
-  "target": "#email-input",
-  "text": "user@example.com"
+```typescript
+interface ActionResponse {
+  sessionId: string;
+  action: "click";
+  target: string;   // selector string or "x,y"
 }
 ```
 
 ---
 
-## `scroll`
+### `type`
 
-Scroll the page up or down.
+Types text into an input element. Clears existing value first.
 
-```
-browser-tool scroll --session <sessionId> --direction <up|down> [--amount <pixels>]
-```
+**Flags:**
+- `--selector <string>` (required) — CSS selector of the input
+- `--text <string>` (required) — text to type
 
-| Option | Required | Description |
-|--------|----------|-------------|
-| `--session` | Yes | Session ID |
-| `--direction` | Yes | `up` or `down` |
-| `--amount` | No | Pixels to scroll (default: 500) |
+**Implementation steps:**
+1. Call `page.fill(selector, text)` — clears field and types atomically
 
 **Output:**
-```json
-{
-  "sessionId": "a1b2c3d4",
-  "action": "scroll",
-  "direction": "down",
-  "amount": 500
+```typescript
+interface ActionResponse {
+  sessionId: string;
+  action: "type";
+  target: string;
+  text: string;
 }
 ```
 
 ---
 
-## `hover`
+### `scroll`
 
-Move the mouse over an element (triggers hover states, tooltips, dropdowns).
+Scrolls the page viewport.
 
-```
-browser-tool hover --session <sessionId> --selector <css-selector>
-browser-tool hover --session <sessionId> --coords <x>,<y>
-```
+**Flags:**
+- `--direction <"up"|"down">` (required)
+- `--amount <number>` (optional, default: `500`) — pixels to scroll
 
-| Option | Required | Description |
-|--------|----------|-------------|
-| `--session` | Yes | Session ID |
-| `--selector` | One of | CSS selector of element to hover |
-| `--coords` | One of | Page coordinates as `x,y` |
+**Implementation steps:**
+1. Call `page.evaluate((amount, dir) => window.scrollBy(0, dir === "down" ? amount : -amount), amount, direction)`
 
 **Output:**
-```json
-{
-  "sessionId": "a1b2c3d4",
-  "action": "hover",
-  "target": "#menu-item"
+```typescript
+interface ActionResponse {
+  sessionId: string;
+  action: "scroll";
+  direction: "up" | "down";
+  amount: number;
 }
 ```
 
 ---
 
-## `upload`
+### `hover`
 
-Upload a file to a file input element.
+Moves the mouse over an element or coordinate, triggering hover states.
 
-```
-browser-tool upload --session <sessionId> --selector <css-selector> --file <local-file-path>
-```
+**Flags (mutually exclusive):**
+- `--selector <string>` — CSS selector
+- `--coords <x>,<y>` — page coordinates
 
-| Option | Required | Description |
-|--------|----------|-------------|
-| `--session` | Yes | Session ID |
-| `--selector` | Yes | CSS selector of the `<input type="file">` element |
-| `--file` | Yes | Absolute path to the local file to upload |
+**Implementation steps:**
+1. If `--selector`: call `page.hover(selector)`
+2. If `--coords`: call `page.mouse.move(x, y)`
 
 **Output:**
-```json
-{
-  "sessionId": "a1b2c3d4",
-  "action": "upload",
-  "target": "#file-input",
-  "file": "/home/user/documents/report.pdf"
+```typescript
+interface ActionResponse {
+  sessionId: string;
+  action: "hover";
+  target: string;
 }
 ```
 
 ---
 
-## `download`
+### `upload`
 
-Trigger a file download and save it to the session's temp directory.
+Sets a file on a `<input type="file">` element.
 
-```
-browser-tool download --session <sessionId> --selector <css-selector>
-```
+**Flags:**
+- `--selector <string>` (required) — CSS selector of the file input
+- `--file <string>` (required) — absolute path to the local file
 
-| Option | Required | Description |
-|--------|----------|-------------|
-| `--session` | Yes | Session ID |
-| `--selector` | Yes | CSS selector of the download link or button |
+**Implementation steps:**
+1. Call `page.setInputFiles(selector, filePath)`
 
 **Output:**
-```json
-{
-  "sessionId": "a1b2c3d4",
-  "action": "download",
-  "filePath": "/tmp/browser-tool/a1b2c3d4/downloads/report.pdf",
-  "fileName": "report.pdf"
+```typescript
+interface ActionResponse {
+  sessionId: string;
+  action: "upload";
+  target: string;
+  file: string;
 }
 ```
 
 ---
 
-## `wait`
+### `download`
 
-Wait for an element to appear in the DOM before proceeding.
+Triggers a download by clicking an element and captures the resulting file.
 
-```
-browser-tool wait --session <sessionId> --selector <css-selector> [--timeout <ms>]
-```
+**Flags:**
+- `--selector <string>` (required) — CSS selector of the download trigger
 
-| Option | Required | Description |
-|--------|----------|-------------|
-| `--session` | Yes | Session ID |
-| `--selector` | Yes | CSS selector of element to wait for |
-| `--timeout` | No | Max wait time in milliseconds (default: 30000) |
+**Implementation steps:**
+1. Set up Playwright download listener: `page.waitForEvent("download")`
+2. Click the element to trigger the download
+3. Await the download event
+4. Save file to `/tmp/browser-tool/<sessionId>/downloads/<filename>`
+5. Resolve filename collisions by appending `_<counter>` before extension
 
 **Output:**
-```json
-{
-  "sessionId": "a1b2c3d4",
-  "action": "wait",
-  "selector": "#results-table"
+```typescript
+interface DownloadResponse {
+  sessionId: string;
+  action: "download";
+  filePath: string;   // absolute path under session temp dir
+  fileName: string;
 }
 ```
 
 ---
 
-## `close`
+### `wait`
 
-End the session and release all resources (browser context, temp files).
+Waits for a CSS selector to appear in the DOM.
 
-```
-browser-tool close --session <sessionId>
-```
+**Flags:**
+- `--selector <string>` (required) — CSS selector to wait for
+- `--timeout <number>` (optional, default: `30000`) — max wait in milliseconds
 
-| Option | Required | Description |
-|--------|----------|-------------|
-| `--session` | Yes | Session ID to close |
+**Implementation steps:**
+1. Call `page.waitForSelector(selector, { timeout })`
 
 **Output:**
-```json
-{
-  "sessionId": "a1b2c3d4",
-  "message": "Session closed"
+```typescript
+interface ActionResponse {
+  sessionId: string;
+  action: "wait";
+  selector: string;
 }
 ```
 
 ---
 
-## Error Codes
+### `close`
 
-| Code | Description |
-|------|-------------|
-| `SESSION_NOT_FOUND` | The provided session ID does not exist or has expired |
-| `NAVIGATION_FAILED` | Could not load the URL (DNS failure, timeout, etc.) |
-| `ELEMENT_NOT_FOUND` | CSS selector matched no element on the page |
-| `TIMEOUT` | Action exceeded the wait timeout |
-| `DOWNLOAD_FAILED` | File download did not complete |
-| `UPLOAD_FAILED` | File upload failed (file not found, wrong selector) |
-| `INVALID_ARGUMENTS` | Missing or invalid command arguments |
+Ends the session and releases all resources.
+
+**Flags:** none beyond `--session`
+
+**Implementation steps:**
+1. Close `Page`
+2. Close `BrowserContext`
+3. Delete temp dir recursively
+4. Remove session from in-memory map
+5. Cancel idle timer
+
+**Output:**
+```typescript
+interface CloseResponse {
+  sessionId: string;
+  message: "Session closed";
+}
+```
