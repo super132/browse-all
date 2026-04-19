@@ -23,16 +23,16 @@ Tasks are ordered by dependency — complete each group before moving to the nex
 
 ## 2. Shared Types (`src/types.ts`)
 
-- [ ] Define `ErrorCode` union type: `SESSION_NOT_FOUND`, `NAVIGATION_FAILED`, `ELEMENT_NOT_FOUND`, `TIMEOUT`, `DOWNLOAD_FAILED`, `UPLOAD_FAILED`, `INVALID_ARGUMENTS`
-- [ ] Define `ErrorResponse` interface: `{ error: string; code: ErrorCode }`
-- [ ] Define `InteractiveElement` union type: link, button, input variants (each with `selector`)
-- [ ] Define `StartResponse` interface
-- [ ] Define `NavigateResponse` interface
-- [ ] Define `ReadResponse` interface (includes `markdown`, `screenshotPath`, `interactiveElements`)
-- [ ] Define `ActionResponse` interface (generic action responses for click, type, scroll, hover, upload, wait)
-- [ ] Define `DownloadResponse` interface
-- [ ] Define `CloseResponse` interface
-- [ ] Define `CommandRequest` interface used for daemon socket messages: `{ command: string; sessionId?: string; args: Record<string, unknown> }`
+- [x] Define `ErrorCode` union type: `SESSION_NOT_FOUND`, `NAVIGATION_FAILED`, `ELEMENT_NOT_FOUND`, `TIMEOUT`, `DOWNLOAD_FAILED`, `UPLOAD_FAILED`, `INVALID_ARGUMENTS`
+- [x] Define `ErrorResponse` interface: `{ error: string; code: ErrorCode }`
+- [x] Define `InteractiveElement` union type: link, button, input variants (each with `selector`)
+- [x] Define `StartResponse` interface
+- [x] Define `NavigateResponse` interface
+- [x] Define `ReadResponse` interface (includes `markdown`, `screenshotPath`, `interactiveElements`)
+- [x] Define `ActionResponse` interface (generic action responses for click, type, scroll, hover, upload, wait)
+- [x] Define `DownloadResponse` interface
+- [x] Define `CloseResponse` interface
+- [x] Define `CommandRequest` interface used for daemon socket messages: `{ command: string; sessionId?: string; args: Record<string, unknown> }`
 
 ---
 
