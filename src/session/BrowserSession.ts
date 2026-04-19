@@ -156,9 +156,31 @@ export class BrowserSession {
     await fs.promises.writeFile(screenshotPath, screenshotBuffer);
 
     const bodyHtml = await this.page.evaluate(() => {
-      const clone = document.body.cloneNode(true) as HTMLElement;
-      clone.querySelectorAll('script, style, noscript').forEach(el => el.remove());
-      return clone.innerHTML;
+      const HIDDEN_MARKER = 'data-browser-tool-hidden';
+
+      // Mark computed-hidden elements on the live DOM (getComputedStyle needs live elements).
+      document.body.querySelectorAll('*').forEach(el => {
+        const style = window.getComputedStyle(el);
+        if (style.display === 'none' || style.visibility === 'hidden') {
+          el.setAttribute(HIDDEN_MARKER, '1');
+        }
+      });
+
+      try {
+        const clone = document.body.cloneNode(true) as HTMLElement;
+        // Remove hidden elements (computed-hidden marker, attribute-hidden, aria-hidden).
+        clone
+          .querySelectorAll(
+            `[${HIDDEN_MARKER}], [hidden], [aria-hidden="true"], script, style, noscript`,
+          )
+          .forEach(el => el.remove());
+        return clone.innerHTML;
+      } finally {
+        // Remove markers from the live DOM regardless of outcome.
+        document.body.querySelectorAll(`[${HIDDEN_MARKER}]`).forEach(el => {
+          el.removeAttribute(HIDDEN_MARKER);
+        });
+      }
     });
 
     const markdown = turndown.turndown(bodyHtml);
