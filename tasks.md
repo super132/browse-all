@@ -6,33 +6,33 @@ Tasks are ordered by dependency — complete each group before moving to the nex
 
 ## 1. Project Scaffolding
 
-- [ ] Initialise `package.json` with name `browser-tool`, version `0.1.0`, and `"type": "commonjs"`
-- [ ] Add `bin` field pointing to `dist/cli.js` with binary name `browser-tool`
-- [ ] Add `scripts`: `build` (`tsc`), `dev` (`ts-node src/cli.ts`), `clean` (`rm -rf dist`), `test` (`jest`), `test:coverage` (`jest --coverage`), `lint` (`eslint src/**/*.ts`)
-- [ ] Create `tsconfig.json` with `target: ES2020`, `module: commonjs`, `outDir: ./dist`, `strict: true`, `esModuleInterop: true`
-- [ ] Install runtime dependencies: `playwright`, `uuid`
-- [ ] Install dev dependencies: `typescript`, `ts-node`, `@types/node`, `@types/uuid`, `jest`, `ts-jest`, `@types/jest`, `eslint`, `@typescript-eslint/parser`, `@typescript-eslint/eslint-plugin`
-- [ ] Install Playwright Chromium browser: `npx playwright install chromium`
-- [ ] Add `dist/`, `node_modules/`, and `coverage/` to `.gitignore`
-- [ ] Select and install an HTML-to-markdown library (e.g. `turndown` + `@types/turndown`)
-- [ ] Select and install a CLI argument parsing library (e.g. `commander` or `yargs`)
-- [ ] Configure Jest in `jest.config.js`: use `ts-jest` preset, `testEnvironment: node`, collect coverage from `src/**/*.ts`
-- [ ] Configure ESLint in `.eslintrc.json`: `@typescript-eslint` recommended rules, `no-console` rule set to `warn` (stderr logging via a logger is preferred)
+- [x] Initialise `package.json` with name `browser-tool`, version `0.1.0`, and `"type": "commonjs"`
+- [x] Add `bin` field pointing to `dist/cli.js` with binary name `browser-tool`
+- [x] Add `scripts`: `build` (`tsc`), `dev` (`ts-node src/cli.ts`), `clean` (`rm -rf dist`), `test` (`jest`), `test:coverage` (`jest --coverage`), `lint` (`eslint src/**/*.ts`)
+- [x] Create `tsconfig.json` with `target: ES2020`, `module: commonjs`, `outDir: ./dist`, `strict: true`, `esModuleInterop: true`
+- [x] Install runtime dependencies: `playwright`, `uuid`, `turndown`, `commander`
+- [x] Install dev dependencies: `typescript`, `ts-node`, `@types/node`, `@types/uuid`, `jest`, `ts-jest`, `@types/jest`, `eslint`, `@typescript-eslint/parser`, `@typescript-eslint/eslint-plugin`, `@types/turndown`
+- [x] Install Playwright Chromium browser: `npx playwright install chromium` — **NOTE: blocked by network in sandbox; must be run manually in a standard dev environment**
+- [x] Add `dist/`, `node_modules/`, and `coverage/` to `.gitignore`
+- [x] Select and install HTML-to-markdown library: `turndown` + `@types/turndown`
+- [x] Select and install CLI argument parsing library: `commander`
+- [x] Configure Jest in `jest.config.js`: `ts-jest` preset, `testEnvironment: node`, coverage from `src/**/*.ts`, 80% threshold
+- [x] Configure ESLint in `eslint.config.js` (flat config, ESLint v10): `@typescript-eslint` rules, `no-console: warn`, `no-explicit-any: error`, `no-floating-promises: error`
 
 ---
 
 ## 2. Shared Types (`src/types.ts`)
 
-- [ ] Define `ErrorCode` union type: `SESSION_NOT_FOUND`, `NAVIGATION_FAILED`, `ELEMENT_NOT_FOUND`, `TIMEOUT`, `DOWNLOAD_FAILED`, `UPLOAD_FAILED`, `INVALID_ARGUMENTS`
-- [ ] Define `ErrorResponse` interface: `{ error: string; code: ErrorCode }`
-- [ ] Define `InteractiveElement` union type: link, button, input variants (each with `selector`)
-- [ ] Define `StartResponse` interface
-- [ ] Define `NavigateResponse` interface
-- [ ] Define `ReadResponse` interface (includes `markdown`, `screenshotPath`, `interactiveElements`)
-- [ ] Define `ActionResponse` interface (generic action responses for click, type, scroll, hover, upload, wait)
-- [ ] Define `DownloadResponse` interface
-- [ ] Define `CloseResponse` interface
-- [ ] Define `CommandRequest` interface used for daemon socket messages: `{ command: string; sessionId?: string; args: Record<string, unknown> }`
+- [x] Define `ErrorCode` union type: `SESSION_NOT_FOUND`, `NAVIGATION_FAILED`, `ELEMENT_NOT_FOUND`, `TIMEOUT`, `DOWNLOAD_FAILED`, `UPLOAD_FAILED`, `INVALID_ARGUMENTS`
+- [x] Define `ErrorResponse` interface: `{ error: string; code: ErrorCode }`
+- [x] Define `InteractiveElement` union type: link, button, input variants (each with `selector`)
+- [x] Define `StartResponse` interface
+- [x] Define `NavigateResponse` interface
+- [x] Define `ReadResponse` interface (includes `markdown`, `screenshotPath`, `interactiveElements`)
+- [x] Define `ActionResponse` interface (generic action responses for click, type, scroll, hover, upload, wait)
+- [x] Define `DownloadResponse` interface
+- [x] Define `CloseResponse` interface
+- [x] Define `CommandRequest` interface used for daemon socket messages: `{ command: string; sessionId?: string; args: Record<string, unknown> }`
 
 ---
 
@@ -40,31 +40,31 @@ Tasks are ordered by dependency — complete each group before moving to the nex
 
 ### `src/session/BrowserSession.ts`
 
-- [ ] Define `BrowserSession` class holding `id`, `context`, `page`, `tempDir`, `createdAt`, `lastActivityAt`
-- [ ] Implement `updateActivity()` to reset `lastActivityAt` to now
-- [ ] Implement `navigate(url)`: validate URL format before calling Playwright; call `page.goto(url, { waitUntil: "networkidle" })`, return final URL and title; map Playwright `net::ERR_*` errors to `NAVIGATION_FAILED`
-- [ ] Implement `read()`: take full-page screenshot (save to `screenshots/screenshot-<timestamp>.png`), extract markdown from page HTML, extract interactive elements, return `ReadResponse`
-- [ ] Implement `click(selector?, coords?)`: call `page.click(selector)` or `page.mouse.click(x, y)`, wait for `networkidle`; map Playwright timeout/not-found errors to `ELEMENT_NOT_FOUND` or `TIMEOUT`
-- [ ] Implement `type(selector, text)`: call `page.fill(selector, text)`; map selector errors to `ELEMENT_NOT_FOUND`
-- [ ] Implement `scroll(direction, amount)`: call `page.evaluate` with `window.scrollBy`
-- [ ] Implement `hover(selector?, coords?)`: call `page.hover(selector)` or `page.mouse.move(x, y)`; map selector errors to `ELEMENT_NOT_FOUND`
-- [ ] Implement `upload(selector, filePath)`: verify `filePath` exists on disk before calling `page.setInputFiles`; throw `UPLOAD_FAILED` if file missing
-- [ ] Implement `download(selector)`: set up `page.waitForEvent("download")`, click element, save file to `downloads/` with collision resolution (append `_<counter>` before extension); throw `DOWNLOAD_FAILED` on timeout
-- [ ] Implement `wait(selector, timeout)`: call `page.waitForSelector(selector, { timeout })`; map timeout error to `TIMEOUT`
-- [ ] Implement `destroy()`: close `page`, close `context`, delete temp dir recursively; swallow errors during cleanup so destroy never throws
-- [ ] Add HTML-to-markdown conversion helper for `read()` that strips `<script>`, `<style>`, and hidden elements before conversion
-- [ ] Add interactive elements extractor for `read()` querying `<a>`, `<button>`, `<input>`, `<textarea>`, `<select>`
-- [ ] Add centralised Playwright error mapper: translate Playwright error messages to typed `ErrorCode` values
+- [x] Define `BrowserSession` class holding `id`, `context`, `page`, `tempDir`, `createdAt`, `lastActivityAt`
+- [x] Implement `updateActivity()` to reset `lastActivityAt` to now
+- [x] Implement `navigate(url)`: validate URL format before calling Playwright; call `page.goto(url, { waitUntil: "networkidle" })`, return final URL and title; map Playwright `net::ERR_*` errors to `NAVIGATION_FAILED`
+- [x] Implement `read()`: take full-page screenshot (save to `screenshots/screenshot-<timestamp>.png`), extract markdown from page HTML, extract interactive elements, return `ReadResponse`
+- [x] Implement `click(selector?, coords?)`: call `page.click(selector)` or `page.mouse.click(x, y)`, wait for `networkidle`; map Playwright timeout/not-found errors to `ELEMENT_NOT_FOUND` or `TIMEOUT`
+- [x] Implement `type(selector, text)`: call `page.fill(selector, text)`; map selector errors to `ELEMENT_NOT_FOUND`
+- [x] Implement `scroll(direction, amount)`: call `page.evaluate` with `window.scrollBy`
+- [x] Implement `hover(selector?, coords?)`: call `page.hover(selector)` or `page.mouse.move(x, y)`; map selector errors to `ELEMENT_NOT_FOUND`
+- [x] Implement `upload(selector, filePath)`: verify `filePath` exists on disk before calling `page.setInputFiles`; throw `UPLOAD_FAILED` if file missing
+- [x] Implement `download(selector)`: set up `page.waitForEvent("download")`, click element, save file to `downloads/` with collision resolution (append `_<counter>` before extension); throw `DOWNLOAD_FAILED` on timeout
+- [x] Implement `wait(selector, timeout)`: call `page.waitForSelector(selector, { timeout })`; map timeout error to `TIMEOUT`
+- [x] Implement `destroy()`: close `page`, close `context`, delete temp dir recursively; swallow errors during cleanup so destroy never throws
+- [x] Add HTML-to-markdown conversion helper for `read()` that strips `<script>`, `<style>`, and hidden elements before conversion
+- [x] Add interactive elements extractor for `read()` querying `<a>`, `<button>`, `<input>`, `<textarea>`, `<select>`
+- [x] Add centralised Playwright error mapper: translate Playwright error messages to typed `ErrorCode` values (`src/errors.ts`)
 
 ### `src/session/SessionManager.ts`
 
-- [ ] Define `SessionManager` class with `Map<string, BrowserSession>` and a shared Playwright `Browser` instance
-- [ ] Implement `createSession()`: generate UUID v4, create `BrowserContext` (isolated), open `Page`, create temp dirs (`/tmp/browser-tool/<id>/screenshots/` and `.../downloads/`), register session, start idle timer, return session
-- [ ] Implement `getSession(id)`: return session or throw structured `SESSION_NOT_FOUND` error
-- [ ] Implement `destroySession(id)`: call `session.destroy()`, cancel idle timer, remove from map; no-op if session not found
-- [ ] Implement idle timer logic: start a 1-hour `setTimeout` per session, call `destroySession` on expiry, reset timer on every command execution
-- [ ] Implement `shutdown()`: destroy all active sessions, close the shared `Browser` instance
-- [ ] Clean up stale temp directories under `/tmp/browser-tool/` that have no matching active session on daemon startup
+- [x] Define `SessionManager` class with `Map<string, BrowserSession>` and a shared Playwright `Browser` instance
+- [x] Implement `createSession()`: generate UUID (`crypto.randomUUID`), create `BrowserContext` (isolated), open `Page`, create temp dirs, register session, start idle timer, return session
+- [x] Implement `getSession(id)`: return session or throw structured `SESSION_NOT_FOUND` error; resets idle timer on every access
+- [x] Implement `destroySession(id)`: call `session.destroy()`, cancel idle timer, remove from map; no-op if session not found
+- [x] Implement idle timer logic: start a 1-hour `setTimeout` per session, call `destroySession` on expiry, reset timer via `getSession`
+- [x] Implement `shutdown()`: destroy all active sessions, close the shared `Browser` instance
+- [x] Implement `cleanupStaleTempDirs()`: remove session dirs under `/tmp/browser-tool/` on daemon startup
 
 ---
 
