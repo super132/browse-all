@@ -1,0 +1,20 @@
+node_modules/
+dist/
+coverage/
+
+# Playwright browser binaries
+/ms-playwright/
+
+# Environment files
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo

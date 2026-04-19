@@ -6,18 +6,18 @@ Tasks are ordered by dependency — complete each group before moving to the nex
 
 ## 1. Project Scaffolding
 
-- [ ] Initialise `package.json` with name `browser-tool`, version `0.1.0`, and `"type": "commonjs"`
-- [ ] Add `bin` field pointing to `dist/cli.js` with binary name `browser-tool`
-- [ ] Add `scripts`: `build` (`tsc`), `dev` (`ts-node src/cli.ts`), `clean` (`rm -rf dist`), `test` (`jest`), `test:coverage` (`jest --coverage`), `lint` (`eslint src/**/*.ts`)
-- [ ] Create `tsconfig.json` with `target: ES2020`, `module: commonjs`, `outDir: ./dist`, `strict: true`, `esModuleInterop: true`
-- [ ] Install runtime dependencies: `playwright`, `uuid`
-- [ ] Install dev dependencies: `typescript`, `ts-node`, `@types/node`, `@types/uuid`, `jest`, `ts-jest`, `@types/jest`, `eslint`, `@typescript-eslint/parser`, `@typescript-eslint/eslint-plugin`
-- [ ] Install Playwright Chromium browser: `npx playwright install chromium`
-- [ ] Add `dist/`, `node_modules/`, and `coverage/` to `.gitignore`
-- [ ] Select and install an HTML-to-markdown library (e.g. `turndown` + `@types/turndown`)
-- [ ] Select and install a CLI argument parsing library (e.g. `commander` or `yargs`)
-- [ ] Configure Jest in `jest.config.js`: use `ts-jest` preset, `testEnvironment: node`, collect coverage from `src/**/*.ts`
-- [ ] Configure ESLint in `.eslintrc.json`: `@typescript-eslint` recommended rules, `no-console` rule set to `warn` (stderr logging via a logger is preferred)
+- [x] Initialise `package.json` with name `browser-tool`, version `0.1.0`, and `"type": "commonjs"`
+- [x] Add `bin` field pointing to `dist/cli.js` with binary name `browser-tool`
+- [x] Add `scripts`: `build` (`tsc`), `dev` (`ts-node src/cli.ts`), `clean` (`rm -rf dist`), `test` (`jest`), `test:coverage` (`jest --coverage`), `lint` (`eslint src/**/*.ts`)
+- [x] Create `tsconfig.json` with `target: ES2020`, `module: commonjs`, `outDir: ./dist`, `strict: true`, `esModuleInterop: true`
+- [x] Install runtime dependencies: `playwright`, `uuid`, `turndown`, `commander`
+- [x] Install dev dependencies: `typescript`, `ts-node`, `@types/node`, `@types/uuid`, `jest`, `ts-jest`, `@types/jest`, `eslint`, `@typescript-eslint/parser`, `@typescript-eslint/eslint-plugin`, `@types/turndown`
+- [x] Install Playwright Chromium browser: `npx playwright install chromium` — **NOTE: blocked by network in sandbox; must be run manually in a standard dev environment**
+- [x] Add `dist/`, `node_modules/`, and `coverage/` to `.gitignore`
+- [x] Select and install HTML-to-markdown library: `turndown` + `@types/turndown`
+- [x] Select and install CLI argument parsing library: `commander`
+- [x] Configure Jest in `jest.config.js`: `ts-jest` preset, `testEnvironment: node`, coverage from `src/**/*.ts`, 80% threshold
+- [x] Configure ESLint in `eslint.config.js` (flat config, ESLint v10): `@typescript-eslint` rules, `no-console: warn`, `no-explicit-any: error`, `no-floating-promises: error`
 
 ---
 
