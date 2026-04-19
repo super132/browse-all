@@ -303,10 +303,23 @@ export class BrowserSession {
   async download(selector: string): Promise<DownloadResponse> {
     const downloadsDir = path.join(this.tempDir, 'downloads');
 
+    // Register the listener BEFORE clicking so the event is never missed.
+    const downloadPromise = this.page.waitForEvent('download', { timeout: 30_000 });
+
+    // Click the trigger element in its own try/catch. If the click fails, the
+    // download listener has no event to receive and will time out after 30 s.
+    // Attach a no-op rejection handler now so that future timeout rejection is
+    // handled and does not become an unhandled promise rejection.
+    try {
+      await this.page.click(selector);
+    } catch (clickErr) {
+      void downloadPromise.catch(() => undefined);
+      const message = clickErr instanceof Error ? clickErr.message : String(clickErr);
+      throw new BrowserToolError('DOWNLOAD_FAILED', message);
+    }
+
     let downloadResult: DownloadResponse;
     try {
-      const downloadPromise = this.page.waitForEvent('download', { timeout: 30_000 });
-      await this.page.click(selector);
       const dl = await downloadPromise;
 
       const failure = await dl.failure();

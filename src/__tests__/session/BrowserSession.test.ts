@@ -480,6 +480,40 @@ describe('BrowserSession.download', () => {
     );
     await expect(session.download('#dl-btn')).rejects.toMatchObject({ code: 'DOWNLOAD_FAILED' });
   });
+
+  it('throws DOWNLOAD_FAILED and does not leave an unhandled rejection when click fails', async () => {
+    // waitForEvent returns a promise that never resolves (simulates the 30 s
+    // timeout that would occur if the click never triggers a download).
+    let rejectDownload!: (err: Error) => void;
+    const neverResolves = new Promise<never>((_resolve, reject) => {
+      rejectDownload = reject;
+    });
+
+    const clickErr = new Error('No element found for selector: #missing');
+    const session = makeSession(
+      {
+        click: jest.fn().mockRejectedValue(clickErr),
+        waitForEvent: jest.fn().mockReturnValue(neverResolves),
+      },
+      TEMP_DIR,
+    );
+
+    // The download() call must throw with DOWNLOAD_FAILED …
+    await expect(session.download('#missing')).rejects.toMatchObject({
+      code: 'DOWNLOAD_FAILED',
+    });
+
+    // … and the pending download promise must be silenced before we reject it,
+    // so no unhandled rejection is emitted. Reject it now and confirm no
+    // 'unhandledRejection' event fires.
+    const unhandledRejectionSpy = jest.fn();
+    process.on('unhandledRejection', unhandledRejectionSpy);
+    rejectDownload(new Error('timeout'));
+    await new Promise(r => setTimeout(r, 0)); // flush microtasks
+    process.off('unhandledRejection', unhandledRejectionSpy);
+
+    expect(unhandledRejectionSpy).not.toHaveBeenCalled();
+  });
 });
 
 // ---------------------------------------------------------------------------
